@@ -1,98 +1,241 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  FlatList,
+  ScrollView,
+  RefreshControl,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { BrandColors } from '@/constants/theme';
+import { FeedHeader, FeedType } from '@/components/deepsta/FeedHeader';
+import { StoryRing, StoryItemData } from '@/components/deepsta/StoryRing';
+import { PostCard, PostItemData } from '@/components/deepsta/PostCard';
+import { StoryViewerModal } from '@/components/deepsta/StoryViewerModal';
+import { CommentDrawerModal } from '@/components/deepsta/CommentDrawerModal';
+import { LiveStreamModal } from '@/components/deepsta/LiveStreamModal';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+const STORIES: StoryItemData[] = [
+  {
+    id: 's0',
+    username: 'Your Story',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop',
+    isUserStory: true,
+  },
+  {
+    id: 's1',
+    username: 'sarah_vibes',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
+    hasUnseenStory: true,
+    isLive: true,
+  },
+  {
+    id: 's2',
+    username: 'alex_dev',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop',
+    hasUnseenStory: true,
+  },
+  {
+    id: 's3',
+    username: 'creative_maya',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop',
+    hasUnseenStory: true,
+  },
+  {
+    id: 's4',
+    username: 'jason_photo',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200&auto=format&fit=crop',
+    hasUnseenStory: false,
+  },
+];
 
-export default function HomeScreen() {
+const POSTS: PostItemData[] = [
+  {
+    id: 'p1',
+    author: {
+      name: 'Sarah Miller',
+      username: 'sarah_vibes',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
+      isVerified: true,
+    },
+    location: 'Cyber Neon District • Tokyo',
+    mediaUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=800&auto=format&fit=crop',
+    audioTrack: {
+      title: 'Midnight Vibe (Original Audio)',
+      artist: 'Deepsta Beats',
+    },
+    likesCount: 14280,
+    commentsCount: 384,
+    caption: 'Lost in the neon glow of the midnight aesthetic. What vibe are you tuning into today? ✨ #DeepstaVibes #CyberAesthetics #NeonGlow',
+    createdAt: '2 hours ago',
+    isLiked: true,
+  },
+  {
+    id: 'p2',
+    author: {
+      name: 'Alex Johnson',
+      username: 'alex_dev',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop',
+      isVerified: false,
+    },
+    location: 'Silicon Valley, CA',
+    mediaUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800&auto=format&fit=crop',
+    audioTrack: {
+      title: 'Lo-Fi Chill Code',
+      artist: 'Synthwave Labs',
+    },
+    likesCount: 8940,
+    commentsCount: 120,
+    caption: 'Building the next evolution of social experience with React Native and Expo! 🚀 Code and coffee.',
+    createdAt: '5 hours ago',
+    isSaved: true,
+  },
+];
+
+export default function HomeFeedScreen() {
+  const router = useRouter();
+  const [currentFeed, setCurrentFeed] = useState<FeedType>('For You');
+  const [postsList, setPostsList] = useState<PostItemData[]>(POSTS);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Modals state
+  const [selectedStory, setSelectedStory] = useState<StoryItemData | null>(null);
+  const [showStoryModal, setShowStoryModal] = useState(false);
+  const [selectedCommentPost, setSelectedCommentPost] = useState<PostItemData | null>(null);
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [showLiveModal, setShowLiveModal] = useState(false);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => {
+      setPostsList(POSTS);
+      setRefreshing(false);
+    }, 1000);
+  };
+
+  const handleLoadMore = () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    setTimeout(() => {
+      const newPosts: PostItemData[] = POSTS.map((p, idx) => ({
+        ...p,
+        id: `post_${Date.now()}_${idx}`,
+        likesCount: p.likesCount + Math.floor(Math.random() * 200),
+        createdAt: 'Earlier today',
+      }));
+      setPostsList((prev) => [...prev, ...newPosts]);
+      setLoadingMore(false);
+    }, 800);
+  };
+
+  const handleStoryPress = (story: StoryItemData) => {
+    if (story.isLive) {
+      setShowLiveModal(true);
+    } else {
+      setSelectedStory(story);
+      setShowStoryModal(true);
+    }
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <View style={styles.container}>
+      {/* Feed Header Component */}
+      <FeedHeader
+        currentFeed={currentFeed}
+        onFeedSelect={setCurrentFeed}
+        unreadMessagesCount={3}
+        unreadNotificationsCount={5}
+      />
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {/* Main Feed Content List */}
+      <FlatList
+        data={postsList}
+        keyExtractor={(item) => item.id}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={BrandColors.glowMagenta}
+          />
+        }
+        ListHeaderComponent={
+          <View style={styles.storiesContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.storiesScrollContent}
+            >
+              {STORIES.map((story) => (
+                <StoryRing
+                  key={story.id}
+                  story={story}
+                  onPress={handleStoryPress}
+                  onAddStoryPress={() => router.push('/(tabs)/create')}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        }
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <ActivityIndicator size="small" color={BrandColors.glowMagenta} />
+            </View>
+          ) : null
+        }
+        renderItem={({ item }) => (
+          <PostCard
+            post={item}
+            onCommentPress={(post) => {
+              setSelectedCommentPost(post);
+              setShowCommentModal(true);
+            }}
+            onSharePress={() => router.push('/messages' as any)}
+          />
+        )}
+        showsVerticalScrollIndicator={false}
+      />
+
+      {/* Story Viewer Modal Component */}
+      <StoryViewerModal
+        visible={showStoryModal}
+        story={selectedStory}
+        onClose={() => setShowStoryModal(false)}
+      />
+
+      {/* Comment Drawer Sheet Component */}
+      <CommentDrawerModal
+        visible={showCommentModal}
+        post={selectedCommentPost}
+        onClose={() => setShowCommentModal(false)}
+      />
+
+      {/* Live Stream View Component */}
+      <LiveStreamModal
+        visible={showLiveModal}
+        onClose={() => setShowLiveModal(false)}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: BrandColors.bgDark,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  storiesContainer: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: BrandColors.bgDark,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  storiesScrollContent: {
+    paddingHorizontal: 12,
   },
 });
