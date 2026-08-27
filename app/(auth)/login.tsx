@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { BrandColors } from '@/constants/theme';
 import { SecurityUtils } from '@/utils/validation';
+import { authApiService } from '@/src/services/auth.service';
 
 const { width } = Dimensions.get('window');
 
@@ -139,12 +140,35 @@ export default function LoginScreen() {
 
     setIsLoading(true);
 
-    // Simulate Auth API with Security Check
-    setTimeout(() => {
+    try {
+      const res = await authApiService.login({
+        identifier: sanitizedId,
+        password: sanitizedPassword,
+      });
+
       setIsLoading(false);
-      // Success Path
-      router.replace('/(tabs)');
-    }, 800);
+
+      if (res.success) {
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        router.replace('/(tabs)');
+      } else {
+        const errorMsg = res.error?.message || 'Login failed. Please check your credentials.';
+        setGeneralError(errorMsg);
+        setFailedAttempts((prev) => {
+          const newCount = prev + 1;
+          if (newCount >= 5) setLockoutTimer(30);
+          return newCount;
+        });
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      setGeneralError(err.message || 'An error occurred during authentication.');
+    }
   };
 
   const handleOpenSocialModal = (providerKey: string) => {

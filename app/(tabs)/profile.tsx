@@ -40,10 +40,37 @@ const POST_GRID = [
   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop',
 ];
 
+import { userApiService } from '@/src/services/user.service';
+
 export default function ProfileScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'grid' | 'reels' | 'saved' | 'tagged'>('grid');
   const [menuVisible, setMenuVisible] = useState(false);
+  const [userData, setUserData] = useState<UserProfileData>(USER_DATA);
+
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await userApiService.getUserProfile('alex_deepsta');
+        if (res.success && res.data) {
+          setUserData({
+            name: res.data.name || res.data.username || 'Alex Morgan',
+            username: res.data.username || 'alex_deepsta',
+            avatar: res.data.avatar || USER_DATA.avatar,
+            bio: res.data.bio || USER_DATA.bio,
+            website: res.data.website || USER_DATA.website,
+            postsCount: res.data.postsCount ?? USER_DATA.postsCount,
+            followersCount: res.data.followersCount ?? USER_DATA.followersCount,
+            followingCount: res.data.followingCount ?? USER_DATA.followingCount,
+            isVerified: res.data.isVerified ?? USER_DATA.isVerified,
+          });
+        }
+      } catch (e) {
+        // Fallback to static user data on error
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleMenuNavigate = (path: string) => {
     if (Platform.OS !== 'web') Haptics.selectionAsync();
@@ -60,7 +87,7 @@ export default function ProfileScreen() {
         ListHeaderComponent={
           <>
             <ProfileHeader
-              user={USER_DATA}
+              user={userData}
               onMenuPress={() => setMenuVisible(true)}
             />
 

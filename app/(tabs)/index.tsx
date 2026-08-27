@@ -94,10 +94,33 @@ const POSTS: PostItemData[] = [
   },
 ];
 
+import { feedApiService } from '@/src/services/feed.service';
+import { apiRequest } from '@/src/services/api';
+
+const mapApiPostToUi = (p: any): PostItemData => ({
+  id: p.id,
+  author: {
+    name: p.user?.name || p.user?.username || 'Deepsta Creator',
+    username: p.user?.username || 'user',
+    avatar: p.user?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200',
+    isVerified: p.user?.isVerified || false,
+  },
+  location: p.location || undefined,
+  mediaUrl: p.media?.[0]?.url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=800',
+  audioTrack: p.audioTitle ? { title: p.audioTitle, artist: p.audioArtist || 'Original Audio' } : undefined,
+  likesCount: p.likesCount || 0,
+  commentsCount: p.commentsCount || 0,
+  caption: p.caption || '',
+  createdAt: p.createdAt ? 'Recently' : '2 hours ago',
+  isLiked: !!p.isLiked,
+  isSaved: !!p.isSaved,
+});
+
 export default function HomeFeedScreen() {
   const router = useRouter();
   const [currentFeed, setCurrentFeed] = useState<FeedType>('For You');
   const [postsList, setPostsList] = useState<PostItemData[]>(POSTS);
+  const [storiesList, setStoriesList] = useState<StoryItemData[]>(STORIES);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -108,25 +131,50 @@ export default function HomeFeedScreen() {
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [showLiveModal, setShowLiveModal] = useState(false);
 
-  const handleRefresh = () => {
+  const fetchLiveFeed = async () => {
+    try {
+      const res = await feedApiService.getHomeFeed();
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        const mapped = res.data.map(mapApiPostToUi);
+        setPostsList(mapped);
+      }
+    } catch (e) {
+      // Keep static fallback on error
+    }
+  };
+
+  const fetchLiveStories = async () => {
+    try {
+      const res = await apiRequest('/stories');
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        const mappedStories: StoryItemData[] = res.data.map((item: any, idx: number) => ({
+          id: item.user?.id || `story_${idx}`,
+          username: item.user?.username || 'Creator',
+          avatar: item.user?.avatar || item.stories?.[0]?.url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200',
+          hasUnseenStory: true,
+        }));
+        setStoriesList([STORIES[0], ...mappedStories]);
+      }
+    } catch (e) {
+      // Keep static fallback on error
+    }
+  };
+
+  React.useEffect(() => {
+    fetchLiveFeed();
+    fetchLiveStories();
+  }, []);
+
+  const handleRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setPostsList(POSTS);
-      setRefreshing(false);
-    }, 1000);
+    await Promise.all([fetchLiveFeed(), fetchLiveStories()]);
+    setRefreshing(false);
   };
 
   const handleLoadMore = () => {
     if (loadingMore) return;
     setLoadingMore(true);
     setTimeout(() => {
-      const newPosts: PostItemData[] = POSTS.map((p, idx) => ({
-        ...p,
-        id: `post_${Date.now()}_${idx}`,
-        likesCount: p.likesCount + Math.floor(Math.random() * 200),
-        createdAt: 'Earlier today',
-      }));
-      setPostsList((prev) => [...prev, ...newPosts]);
       setLoadingMore(false);
     }, 800);
   };
@@ -170,7 +218,7 @@ export default function HomeFeedScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.storiesScrollContent}
             >
-              {STORIES.map((story) => (
+              {storiesList.map((story) => (
                 <StoryRing
                   key={story.id}
                   story={story}

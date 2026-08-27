@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { BrandColors } from '@/constants/theme';
 import { SecurityUtils } from '@/utils/validation';
+import { authApiService } from '@/src/services/auth.service';
 
 const { width } = Dimensions.get('window');
 
@@ -137,10 +138,38 @@ export default function RegisterScreen() {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const res = await authApiService.register({
+        email: emailVal.sanitizedValue || email,
+        username: username.toLowerCase().trim(),
+        name: nameVal.sanitizedValue || fullName,
+        password,
+      });
+
       setIsLoading(false);
-      router.replace('/(tabs)');
-    }, 1000);
+
+      if (res.success) {
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        router.replace('/(tabs)');
+      } else {
+        const errorMsg = res.error?.message || 'Registration failed. Username or email may already exist.';
+        if (errorMsg.toLowerCase().includes('email')) {
+          setEmailError(errorMsg);
+        } else if (errorMsg.toLowerCase().includes('username')) {
+          setUsernameError(errorMsg);
+        } else {
+          setPasswordError(errorMsg);
+        }
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      setPasswordError(err.message || 'Registration failed.');
+    }
   };
 
   const handleOpenSocialModal = (providerKey: string) => {

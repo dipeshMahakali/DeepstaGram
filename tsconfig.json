@@ -5,6 +5,12 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@/services/*": [
+        "./src/services/*"
+      ],
+      "@/src/*": [
+        "./src/*"
       ]
     }
   },
@@ -13,5 +19,10 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "backend",
+    "dist"
   ]
 }
